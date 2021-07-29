@@ -16,18 +16,15 @@ func main() {
 		greatestFlag bool
 		leastFlag    bool
 		constraint   string
+		reverseFlag  bool
 	)
 
 	flag.BoolVar(&greatestFlag, "greatest", false, "display the greatest version for a given list")
 	flag.BoolVar(&leastFlag, "least", false, "display the least version for a given list")
-	flag.StringVar(&constraint, "constraint", "", "list versions greatest to least, if versions pass given constraint.")
+	flag.StringVar(&constraint, "constraint", "", "list versions only if versions pass given constraint")
+	flag.BoolVar(&reverseFlag, "reverse", false, "lists verions greatest to least")
 
 	flag.Parse()
-
-	if !greatestFlag && !leastFlag && constraint == "" {
-		flag.Usage()
-		os.Exit(0)
-	}
 
 	reader := bufio.NewReader(os.Stdin)
 	var rawVersions []string
@@ -56,17 +53,22 @@ func main() {
 		versions[i] = v
 	}
 
-	// greatest to least
-	sort.Sort(sort.Reverse(semver.Collection(versions)))
+	// least to greatest
+	sort.Sort(semver.Collection(versions))
 
 	if greatestFlag {
-		fmt.Println(versions[0])
+		fmt.Println(versions[len(versions)-1])
 		os.Exit(0)
 	}
 
 	if leastFlag {
-		fmt.Println(versions[len(versions)-1])
+		fmt.Println(versions[0])
 		os.Exit(0)
+	}
+
+	//greatest to least
+	if reverseFlag {
+		sort.Sort(sort.Reverse(semver.Collection(versions)))
 	}
 
 	if constraint != "" {
@@ -75,13 +77,17 @@ func main() {
 			fmt.Printf("Error parsing constraint '%s': %s\n", constraint, err.Error())
 			os.Exit(3)
 		}
+
 		for _, v := range versions {
 			status, _ := c.Validate(v)
 			if status {
 				fmt.Println(v)
 			}
 		}
-		os.Exit(0)
+	} else {
+		for _, v := range versions {
+			fmt.Println(v)
+		}
 	}
-
+	os.Exit(0)
 }
