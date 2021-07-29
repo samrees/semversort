@@ -13,9 +13,9 @@ import (
 
 func main() {
 	var (
-		greatestFlag  bool
-		leastFlag     bool
-		constraint string
+		greatestFlag bool
+		leastFlag    bool
+		constraint   string
 	)
 
 	flag.BoolVar(&greatestFlag, "greatest", false, "display the greatest version for a given list")
