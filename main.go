@@ -4,31 +4,29 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
-	semver "github.com/Masterminds/semver/v3"
 	"io"
 	"os"
 	"sort"
+
+	"github.com/Masterminds/semver/v3"
 )
 
 func main() {
-	fgreatest := flag.Bool("greatest", false, "display the greatest version for a given list")
-	fleast := flag.Bool("least", false, "display the least version for a given list")
-	constraint := flag.String("constraint", "", "list versions greatest to least, if versions pass given constraint.")
+	var (
+		fgreatest  bool
+		fleast     bool
+		constraint string
+	)
+
+	flag.BoolVar(&fgreatest, "greatest", false, "display the greatest version for a given list")
+	flag.BoolVar(&fleast, "least", false, "display the least version for a given list")
+	flag.StringVar(&constraint, "constraint", "", "list versions greatest to least, if versions pass given constraint.")
 
 	flag.Parse()
-	if !(*fgreatest == true || *fleast == true || *constraint != "") {
+
+	if fgreatest == false && fleast == false && constraint == "" {
 		flag.Usage()
 		os.Exit(0)
-	}
-
-	info, err := os.Stdin.Stat()
-	if err != nil {
-		panic(err)
-	}
-
-	if info.Mode()&os.ModeCharDevice != 0 || info.Size() <= 0 {
-		fmt.Println("you must pipe in a list of semvers to sort.")
-		os.Exit(1)
 	}
 
 	reader := bufio.NewReader(os.Stdin)
@@ -36,9 +34,13 @@ func main() {
 
 	for {
 		input, _, err := reader.ReadLine()
-		if err != nil && err == io.EOF {
+		if err == io.EOF {
 			break
+		} else if err != nil {
+			fmt.Println("Error reading input: ", err.Error())
+			os.Exit(1)
 		}
+
 		rawvers = append(rawvers, string(input))
 	}
 
@@ -47,8 +49,7 @@ func main() {
 	for i, r := range rawvers {
 		v, err := semver.NewVersion(r)
 		if err != nil {
-			printedErr := fmt.Errorf("Error parsing version: %s", err)
-			fmt.Println(printedErr)
+			fmt.Printf("Error parsing version '%s': %s\n", r, err.Error())
 			os.Exit(2)
 		}
 
@@ -58,20 +59,20 @@ func main() {
 	// greatest to least
 	sort.Sort(sort.Reverse(semver.Collection(vers)))
 
-	if *fgreatest == true {
+	if fgreatest {
 		fmt.Println(vers[0])
 		os.Exit(0)
 	}
-	if *fleast == true {
+
+	if fleast {
 		fmt.Println(vers[len(vers)-1])
 		os.Exit(0)
 	}
 
-	if *constraint != "" {
-		c, err := semver.NewConstraint(*constraint)
+	if constraint != "" {
+		c, err := semver.NewConstraint(constraint)
 		if err != nil {
-			printedErr := fmt.Errorf("Error parsing constraint: %s", err)
-			fmt.Println(printedErr)
+			fmt.Printf("Error parsing constraint '%s': %s\n", constraint, err.Error())
 			os.Exit(3)
 		}
 		for _, v := range vers {
