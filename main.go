@@ -11,83 +11,102 @@ import (
 	"github.com/Masterminds/semver/v3"
 )
 
-func main() {
-	var (
-		greatestFlag bool
-		leastFlag    bool
-		constraint   string
-		reverseFlag  bool
-	)
+var (
+	ignoreParseError bool
+	quiet            bool
+	constraint       string
+	reverseFlag      bool
+	num              int
+	latest           bool
+	oldest           bool
+)
 
-	flag.BoolVar(&greatestFlag, "greatest", false, "display the greatest version for a given list")
-	flag.BoolVar(&leastFlag, "least", false, "display the least version for a given list")
-	flag.StringVar(&constraint, "constraint", "", "list versions only if versions pass given constraint")
-	flag.BoolVar(&reverseFlag, "reverse", false, "lists verions greatest to least")
+func main() {
+	flag.BoolVar(&ignoreParseError, "ignore", false, "Output the error and ignore if a version can't be parsed")
+	flag.BoolVar(&quiet, "quiet", false, "Suppress error output")
+	flag.StringVar(&constraint, "constraint", "", "Filter versions by constraints if given")
+	flag.BoolVar(&reverseFlag, "reverse", false, "lists versions latest to oldest")
+	flag.IntVar(&num, "num", 0, "Number of versions to display")
+	flag.BoolVar(&latest, "latest", false, "Display the latest version")
+	flag.BoolVar(&oldest, "oldest", false, "Display the oldest version")
 
 	flag.Parse()
 
-	reader := bufio.NewReader(os.Stdin)
-	var rawVersions []string
+	if oldest {
+		num = 1
+	} else if latest {
+		reverseFlag = true
+		num = 1
+	}
 
+	versions := semver.Collection{}
+
+	reader := bufio.NewReader(os.Stdin)
 	for {
 		input, _, err := reader.ReadLine()
 		if err == io.EOF {
 			break
 		} else if err != nil {
-			fmt.Println("Error reading input: ", err.Error())
+			outputToStderr("Error reading input: %s\n", err.Error())
 			os.Exit(1)
 		}
 
-		rawVersions = append(rawVersions, string(input))
-	}
-
-	versions := make([]*semver.Version, len(rawVersions))
-
-	for i, r := range rawVersions {
-		v, err := semver.NewVersion(r)
+		line := string(input)
+		ver, err := semver.NewVersion(line)
 		if err != nil {
-			fmt.Printf("Error parsing version '%s': %s\n", r, err.Error())
-			os.Exit(2)
+			outputToStderr("Invalid version: %q\n", line)
+			if ignoreParseError {
+				continue
+			} else {
+				os.Exit(2)
+			}
 		}
 
-		versions[i] = v
+		versions = append(versions, ver)
 	}
 
-	// least to greatest
-	sort.Sort(semver.Collection(versions))
-
-	if greatestFlag {
-		fmt.Println(versions[len(versions)-1])
-		os.Exit(0)
-	}
-
-	if leastFlag {
-		fmt.Println(versions[0])
-		os.Exit(0)
-	}
-
-	//greatest to least
-	if reverseFlag {
-		sort.Sort(sort.Reverse(semver.Collection(versions)))
-	}
+	// oldest to latest
+	sort.Sort(versions)
 
 	if constraint != "" {
 		c, err := semver.NewConstraint(constraint)
 		if err != nil {
-			fmt.Printf("Error parsing constraint '%s': %s\n", constraint, err.Error())
+			outputToStderr("Invalid constraint %q: %+v\n", constraint, err)
 			os.Exit(3)
 		}
+		versions = filterByConstraint(versions, c)
+	}
 
-		for _, v := range versions {
-			status, _ := c.Validate(v)
-			if status {
-				fmt.Println(v)
-			}
+	if reverseFlag {
+		sort.Sort(sort.Reverse(versions))
+	}
+
+	if num > 0 {
+		if num > len(versions) {
+			num = len(versions)
 		}
-	} else {
-		for _, v := range versions {
-			fmt.Println(v)
+		versions = versions[:num]
+	}
+
+	for _, v := range versions {
+		fmt.Println(v)
+	}
+}
+
+func filterByConstraint(versions semver.Collection, c *semver.Constraints) semver.Collection {
+	r := semver.Collection{}
+	for _, v := range versions {
+		ok, _ := c.Validate(v)
+		if ok {
+			r = append(r, v)
 		}
 	}
-	os.Exit(0)
+	return r
+}
+
+func outputToStderr(format string, args ...interface{}) {
+	if quiet {
+		return
+	}
+	fmt.Fprintf(os.Stderr, format, args...)
 }
