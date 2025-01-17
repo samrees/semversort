@@ -10,6 +10,12 @@ If you need it to do something extra, pull requests welcome.
 
 This only exists because more people dont adopt: https://samver.org/ which is sortable by standard unix `sort`.
 
+## Install
+
+```
+go install github.com/akm/semversort@latest
+```
+
 ## Usage
 
 sorts versions you pass to it over a pipe.
@@ -17,13 +23,19 @@ sorts versions you pass to it over a pipe.
 ```
 Usage of ./semversort:
   -constraint string
-    	list versions only if versions pass given constraint
-  -greatest
-    	display the greatest version for a given list
-  -least
-    	display the least version for a given list
+        Filter versions by constraints if given
+  -ignore
+        Output the error and ignore if a version can't be parsed
+  -latest
+        Display the latest version
+  -num int
+        Number of versions to display
+  -oldest
+        Display the oldest version
+  -quiet
+        Suppress error output
   -reverse
-    	lists verions greatest to least
+        lists versions latest to oldest
 ```
 
 examples:
@@ -49,6 +61,12 @@ examples:
 0.3.1
 [~]> echo -e "1.2.3\n4.5.6\n2.9.100+woot\n0.3.1" | ./semversort -greatest
 4.5.6
+[~]> echo -e "20.3.1\n1.2.3\n4.5.6\n20241231t123456\n2.9.100+woot\n0.3.1" | ./semversort --ignore --quiet
+0.3.1
+1.2.3
+2.9.100+woot
+4.5.6
+20.3.1
 ```
 
 more info on semver constraints:
