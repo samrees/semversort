@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"flag"
 	"fmt"
 	"io"
@@ -38,7 +39,9 @@ func main() {
 			os.Exit(1)
 		}
 
-		rawVersions = append(rawVersions, string(input))
+		if len(bytes.TrimSpace(input)) > 0 {
+			rawVersions = append(rawVersions, string(input))
+		}
 	}
 
 	versions := make([]*semver.Version, len(rawVersions))
