@@ -54,3 +54,10 @@ examples:
 more info on semver constraints:
 
 https://github.com/Masterminds/semver/tree/v3.1.1#basic-comparisons
+
+## Install
+
+```
+brew tap samrees/semversort
+brew install semversort
+```
